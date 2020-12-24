@@ -1,5 +1,5 @@
 """
-Counts elements in a one column csv. Write results to a new csv.
+Counts elements in a one column csv. Writes results to a new csv.
 """
 
 import csv
