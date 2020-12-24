@@ -3,15 +3,40 @@ Counts elements in a one column csv. Writes results to a new csv.
 """
 
 import csv
+import glob
+import os
 import pyinputplus as pyip
 
 
-def populate_list_of_elements():
+def replace_spaces_with_underscores():
+    """Replace spaces in filenames with underscores."""
+
+    lst = [os.rename(csv_file, csv_file.replace(" ", "_").lower()) \
+           for csv_file in os.listdir(".") if not csv_file.startswith(".")]
+    return lst
+
+
+def get_list_of_files():
+    """Using glob, populate a list of all the csvs in the directory."""
+
+    return glob.glob("*.csv")
+
+
+def append_report_csv(filename):
+    """
+    Create a new file by appending '_report.csv' to the constituent file
+    names. Results will be written to the newly created file.
+    """
+
+    return filename.split(".")[0] + "_report.csv"
+
+
+def populate_list_of_elements(filename):
     """Import a csv and populate a list of all apps."""
 
     lst = []
 
-    with open("filename.csv", newline="") as csvfile:
+    with open(filename, newline="") as csvfile:
         appreader = csv.reader(csvfile, delimiter=" ", quotechar="|")
         column_header = " ".join(next(appreader))
         for row in sorted(appreader):
@@ -54,7 +79,7 @@ def output_results():
         print(f"{element}, {count}")
 
 
-def write_dct_to_csv():
+def write_dct_to_csv(filename):
     """
     Write dictionary to csv. The dictionary will be structured in the following
     way.
@@ -62,7 +87,7 @@ def write_dct_to_csv():
     value: number of installs
     """
 
-    with open("filename_report.csv", "w") as out_file:
+    with open(filename, "w") as out_file:
         out_csv = csv.writer(out_file)
         out_csv.writerow([header,"count"])
         for element, num_installs in sorted(element_counts.items(), key=lambda \
@@ -70,10 +95,14 @@ def write_dct_to_csv():
             keys_values = (element, num_installs)
             out_csv.writerow(keys_values)
 
-    print('\n"abc_report.csv" exported successfully\n')
+    print(f'\n"{filename}" exported successfully\n')
 
 
-header, elements = populate_list_of_elements()
-element_counts = build_dct_of_counts()
-output_results()
-write_dct_to_csv()
+replace_spaces_with_underscores()
+file_list = get_list_of_files()
+for file in file_list:
+    header, elements = populate_list_of_elements(file)
+    element_counts = build_dct_of_counts()
+    file_to_export = append_report_csv(file)
+    output_results()
+    write_dct_to_csv(file_to_export)
