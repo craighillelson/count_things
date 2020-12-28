@@ -8,6 +8,20 @@ import os
 import pyinputplus as pyip
 
 
+def reports_folder():
+    """
+    Check to see if a reports folder exists. If a reports folder does not exist,
+    create one.
+    """
+
+    if os.path.exists("reports") == True:
+        print("reports directory exists")
+        print("setup complete\n")
+    else:
+        os.mkdir("reports")
+        print("reports directory created successfully")
+
+
 def replace_spaces_with_underscores():
     """Replace spaces in filenames with underscores."""
 
@@ -87,7 +101,8 @@ def write_dct_to_csv(filename):
     value: number of installs
     """
 
-    with open(filename, "w") as out_file:
+    dir_filename = "reports/" + filename
+    with open(dir_filename, "w") as out_file:
         out_csv = csv.writer(out_file)
         out_csv.writerow([header,"count"])
         for element, num_installs in sorted(element_counts.items(), key=lambda \
@@ -98,6 +113,7 @@ def write_dct_to_csv(filename):
     print(f'\n"{filename}" exported successfully\n')
 
 
+reports_folder()
 replace_spaces_with_underscores()
 file_list = get_list_of_files()
 for file in file_list:
