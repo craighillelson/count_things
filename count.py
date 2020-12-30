@@ -1,10 +1,13 @@
 """
-Counts elements in a one column csv. Writes results to a new csv.
+Counts elements in a one column csvs. Totals results and outputs "totals.csv" to
+reports folder.
 """
 
 import csv
 import glob
 import os
+from collections import Counter
+from collections import defaultdict
 import pyinputplus as pyip
 
 
@@ -14,12 +17,21 @@ def reports_folder():
     create one.
     """
 
-    if os.path.exists("reports") == True:
-        print("reports directory exists")
-        print("setup complete\n")
+    if os.path.exists("reports"):
+        print("\nreports directory exists")
     else:
         os.mkdir("reports")
-        print("reports directory created successfully")
+        print("\nreports directory created successfully")
+
+
+def exclusions_file():
+
+    if os.path.exists("reports/exclusions.csv"):
+        print('"exclusions.csv" already exists')
+    else:
+        with open("reports/exclusions.csv", "w") as out_file:
+            out_csv = csv.writer(out_file)
+            out_csv.writerow(["element"])
 
 
 def replace_spaces_with_underscores():
@@ -30,95 +42,143 @@ def replace_spaces_with_underscores():
     return lst
 
 
-def get_list_of_files():
+def setup():
+    print("\nsetup")
+    reports_folder()
+    exclusions_file()
+    replace_spaces_with_underscores()
+    print("\nsetup complete\n")
+
+
+def build_list_of_pre_existing_exclusions():
+    """
+    Import exclusions from 'reports/exclusions.csv' and return a list of all
+    exclusions.
+    """
+
+    lst = []
+    with open("reports/exclusions.csv", "r") as csv_file:
+        f_csv = csv.reader(csv_file)
+        headings = next(f_csv)
+        for row in f_csv:
+            lst.append(row[0])
+    return lst
+
+
+def build_list_of_files():
     """Using glob, populate a list of all the csvs in the directory."""
 
     return glob.glob("*.csv")
 
 
-def append_report_csv(filename):
+def build_list_of_exclusions_to_add():
     """
-    Create a new file by appending '_report.csv' to the constituent file
-    names. Results will be written to the newly created file.
+    Taking user input, add the user's choices of elements to exclude to a list
+    of exclusions to be merged with the pre-existing list of exclusions.
     """
 
-    return filename.split(".")[0] + "_report.csv"
 
+    def print_instruction():
+        """Prompt user to make a selection or quit."""
 
-def populate_list_of_elements(filename):
-    """Import a csv and populate a list of all apps."""
+        print("\nselect an element to exclude (or nothing to exit)")
+
 
     lst = []
-
-    with open(filename, newline="") as csvfile:
-        appreader = csv.reader(csvfile, delimiter=" ", quotechar="|")
-        column_header = " ".join(next(appreader))
-        for row in sorted(appreader):
-            lst.append(" ".join(row))
-
-    return column_header, lst
-
-
-def build_dct_of_counts():
-    """
-    Using Counter from Python's standard library, populate a dictionary
-    structured in the following way.
-    key: item
-    value: number of occurances of item
-    """
-
-    dct = {}
-    for element in elements:
-        dct.setdefault(element, 0)
-        dct[element] = dct[element] + 1
-
-    return dct
+    while True:
+        user_selection = pyip.inputInt("\n> ", min=1, blank=True)
+        if user_selection == "":
+            break
+        lst = lst + [remaining_elements_map[user_selection]]
+        print_instruction()
+    return lst
 
 
-def prompt_user_for_num_results():
-    """
-    Prompt user for the number of results they'd like to see. User must input an
-    integer.
-    """
+def ammend_exclusions_csv():
+    """Write additional exclusions to 'reports/exclusions.csv'"""
 
-    return pyip.inputInt("How many results would you like to see?\n> ")
-
-
-def output_results():
-    """Output results to the screen."""
-
-    print(f"{header}, count")
-    for element, count in sorted(element_counts.items(), key=lambda x: x[1], \
-                                 reverse=True):
-        print(f"{element}, {count}")
-
-
-def write_dct_to_csv(filename):
-    """
-    Write dictionary to csv. The dictionary will be structured in the following
-    way.
-    key: application
-    value: number of installs
-    """
-
-    dir_filename = "reports/" + filename
-    with open(dir_filename, "w") as out_file:
+    with open("reports/exclusions.csv", "a") as out_file:
         out_csv = csv.writer(out_file)
-        out_csv.writerow([header,"count"])
-        for element, num_installs in sorted(element_counts.items(), key=lambda \
-                                            x: x[1], reverse=True):
-            keys_values = (element, num_installs)
-            out_csv.writerow(keys_values)
+        for element in exclusions_to_add:
+            out_csv.writerow([element])
+            
+def write_totals_to_csv():
+    """Write totals for each element to 'reports/totals.csv'"""
 
-    print(f'\n"{filename}" exported successfully\n')
+    with open("reports/totals.csv", "w") as out_file:
+        out_csv = csv.writer(out_file)
+        out_csv.writerow(["element","count"])
+        for element in elements_counts:
+            out_csv.writerow(element)
+
+    print('\n"totals.csv" exported to reports folder successfully\n')
 
 
-reports_folder()
-replace_spaces_with_underscores()
-file_list = get_list_of_files()
-for file in file_list:
-    header, elements = populate_list_of_elements(file)
-    element_counts = build_dct_of_counts()
-    file_to_export = append_report_csv(file)
-    output_results()
-    write_dct_to_csv(file_to_export)
+setup()
+
+print("\npre-existing exclusions")
+pre_exisitng_exclusions = build_list_of_pre_existing_exclusions()
+print(pre_exisitng_exclusions)
+
+print("\nfilenames")
+filenames = build_list_of_files()
+print(filenames)
+
+print("\ndictionaries")
+dct = defaultdict(list)
+groups_elements = []
+for filename in filenames:
+    group_name = filename.split(".")[0]
+    with open(filename, newline='') as csvfile:
+        elementreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
+        headings = next(elementreader)
+        for row in elementreader:
+            groups_elements.append([group_name, row[0]])
+
+for group_element in groups_elements:
+    dct[group_element[0]].append(group_element[1])
+
+all_elements = []
+for group, elements in dct.items():
+    print(group, elements)
+    all_elements.extend(elements)
+
+print("\nall elements")
+print(all_elements)
+
+print("\nremaining elements map")
+print("make a selection from the elements below (or nothing to quit)")
+
+remaining_elements = []
+elements_set = set(all_elements)
+for element in elements_set:
+    if element not in pre_exisitng_exclusions:
+        remaining_elements.append(element)
+
+remaining_elements_map = {}
+for num, element in sorted(enumerate(remaining_elements, 1)):
+    remaining_elements_map[num] = element
+
+for num, element in remaining_elements_map.items():
+    print(f"{num}. {element}")
+
+exclusions_to_add = []
+while True:
+    selected_element = pyip.inputInt("\n> ", min=1, blank=True)
+    if selected_element == "":
+        break
+    exclusions_to_add = exclusions_to_add + \
+                        [remaining_elements_map[selected_element]]
+    print("\nmake a selection from the elements below (or nothing to quit)")
+
+print("\nall exclusions")
+all_exclusions = exclusions_to_add + pre_exisitng_exclusions
+print(sorted(all_exclusions))
+ammend_exclusions_csv()
+
+print("\nelement counts")
+element_counts = Counter(all_elements)
+elements_counts = element_counts.most_common()
+for element in elements_counts:
+    print(f'{element[0]}: {element[1]}')
+write_totals_to_csv()
